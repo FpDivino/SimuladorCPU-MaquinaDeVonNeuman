@@ -103,11 +103,11 @@ void busca(void) {
     - separar os campos da instrucao que esta no MBR;
     - preencher IR, RO0, RO1 e IMM.
 
-    Formato de 1 byte:
+    1 byte:
         bits 7..3 = opcode
         bits 2..0 = reg0 ou zero
 
-    Formato de 2 bytes:
+    2 bytes:
         primeiro byte:
             bits 7..3 = opcode
             bits 2..0 = reg0
@@ -116,7 +116,7 @@ void busca(void) {
             bits 7..5 = reg1
             bits 4..0 = zero
 
-    Formato de 3 bytes:
+    3 bytes:
         primeiro byte:
             bits 7..3 = opcode
             bits 2..0 = reg0 ou zero
