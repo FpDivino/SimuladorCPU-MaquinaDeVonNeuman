@@ -10,7 +10,6 @@ unsigned char lerByteMemoria(unsigned short int endereco) {
     return (unsigned char)(mbr & 0xFF);
 }
 
-
 void inicializarCPU(void) {
     int i;
 
@@ -40,7 +39,6 @@ void inicializarCPU(void) {
     tamanhoInstrucao = 0;
 }
 
-
 void busca(void) {
     unsigned char primeiroByte = 0;
     unsigned char segundoByte = 0;
@@ -50,22 +48,20 @@ void busca(void) {
 
     primeiroByte = lerByteMemoria(pc);
 
-    ir = primeiroByte >> 3;     //O opcode esta nos bits 7..3 do primeiro byte.O primeiroByte tem 8 bits, deslocar 3 bits para a direita
-                                //deixa apenas o opcode.
+    ir = primeiroByte >> 3;    // O opcode esta nos bits 7..3 do primeiro byte. O primeiroByte tem 8 bits, deslocar 3 bits para a direita
+                               // deixa apenas o opcode.
 
+    if (ir == 0b00000 || ir == 0b00001 || ir == 0b01101) {    // Instruções de 1 byte
+        tamanhoInstrucao = 1;                                 // 00000 = halt
+        mbr = primeiroByte;                                   // 00001 = nop
+    }                                                         // 01101 = not
 
-    if (ir == 0b00000 || ir == 0b00001 || ir == 0b01101) { //Instruções de 1 byte
-        tamanhoInstrucao = 1;                              // 00000 = halt
-        mbr = primeiroByte;                                // 00001 = nop
-    }                                                      // 01101 = not                        
-
-
-    else if (ir >= 0b00010 && ir <= 0b01100) {            //Intruções de 2 bytes 
-        tamanhoInstrucao = 2;                             // 00010 = ldr                00111 = div         
-                                                          // 00011 = str                01000 = cmp         
-        segundoByte = lerByteMemoria(pc + 1);             // 00100 = add                01001 = movr          
-                                                          // 00101 = sub                01010 = or  
-        mbr = ((unsigned int)primeiroByte << 8) |         // 00110 = mul                01100 = xor 
+    else if (ir >= 0b00010 && ir <= 0b01100) {                // Intruções de 2 bytes
+        tamanhoInstrucao = 2;                                 // 00010 = ldr                00111 = div
+                                                              // 00011 = str                01000 = cmp
+        segundoByte = lerByteMemoria(pc + 1);                 // 00100 = add                01001 = movr
+                                                              // 00101 = sub                01010 = or
+        mbr = ((unsigned int)primeiroByte << 8) |             // 00110 = mul                01100 = xor
               ((unsigned int)segundoByte);
     }
 
@@ -74,15 +70,15 @@ void busca(void) {
         01110 ate 11101
         saltos, ld, st, movi, addi, subi, muli, divi, lsh, rsh
     */
-    else if (ir >= 0b01110 && ir <= 0b11101) {             //Instruções de 3 bytes
-        tamanhoInstrucao = 3;                              // 01110 = je                10110 = st    
-                                                           // 01111 = jne               10111 = movi
-        segundoByte = lerByteMemoria(pc + 1);              // 10000 = jl                11000 = addi    
-        terceiroByte = lerByteMemoria(pc + 2);             // 10001 = jle               11001 = subi
-                                                           // 10010 = jg                11010 = muli
-        mbr = ((unsigned int)primeiroByte << 16) |         // 10011 = jge               11011 = divi    
-              ((unsigned int)segundoByte << 8)  |          // 10100 = jmp               11100 = lsh    
-              ((unsigned int)terceiroByte);                // 10101 = ld                11101 = rsh    
+    else if (ir >= 0b01110 && ir <= 0b11101) {                // Instruções de 3 bytes
+        tamanhoInstrucao = 3;                                 // 01110 = je                10110 = st
+                                                              // 01111 = jne               10111 = movi
+        segundoByte = lerByteMemoria(pc + 1);                 // 10000 = jl                11000 = addi
+        terceiroByte = lerByteMemoria(pc + 2);                // 10001 = jle               11001 = subi
+                                                              // 10010 = jg                11010 = muli
+        mbr = ((unsigned int)primeiroByte << 16) |            // 10011 = jge               11011 = divi
+              ((unsigned int)segundoByte << 8)  |             // 10100 = jmp               11100 = lsh
+              ((unsigned int)terceiroByte);                   // 10101 = ld                11101 = rsh
     }
 
     else {
@@ -97,12 +93,7 @@ void busca(void) {
 }
 
 /*
-    DECODIFICA
-
-    Responsabilidades:
-    - separar os campos da instrucao que esta no MBR;
-    - preencher IR, RO0, RO1 e IMM.
-
+    DECODIFICAO:
     1 byte:
         bits 7..3 = opcode
         bits 2..0 = reg0 ou zero
@@ -124,6 +115,7 @@ void busca(void) {
         segundo e terceiro bytes:
             endereco ou imediato de 16 bits
 */
+
 void decodifica(void) {
     unsigned char primeiroByte = 0;
     unsigned char segundoByte = 0;
@@ -168,8 +160,6 @@ void decodifica(void) {
         executando = 0;
     }
 }
-
-
 void exibirEstadoBuscaDecodifica(void) {
     printf("\nCPU apos busca e decodificacao:\n");
     printf("PC : 0x%04X\n", pc);
@@ -215,7 +205,6 @@ int main(void) {
         if (erroCPU == 1) {
             break;
         }
-
         exibirEstadoBuscaDecodifica();
 
         if (ir == 0b00000) {
@@ -223,12 +212,9 @@ int main(void) {
         } else {
             pc = (pc + tamanhoInstrucao) & 0x00FF;
         }
-
         printf("\nPressione Enter para continuar...\n");
         getchar();
     }
-
     printf("\n--- FIM DO TESTE ---\n");
-
     return 0;
 }
