@@ -199,6 +199,9 @@ void carregarTesteManual(void) {
 }
 //Vanessa
 void executa(void) {
+    unsigned char byteAlto;
+    unsigned char byteBaixo;
+
     switch (ir) {
         case 0b00000: //hlt
             executando = 0;
@@ -219,9 +222,11 @@ void executa(void) {
             byteBaixo = reg[ro0] & 0xFF;
             escreverByteMemoria(reg[ro1], byteAlto);
             escreverByteMemoria(reg[ro1] + 1, byteBaixo);
+            break;
 
         case 0b00100: { // add rX, rY
-            reg[ro0] = reg[ro0] + reg[ro1];;
+            reg[ro0] = reg[ro0] + reg[ro1];
+            break;
         }
 
         case 0b00101: {//sub
@@ -229,22 +234,22 @@ void executa(void) {
             break;
         }
 
-         case 0b00110: { //mull
+        case 0b00110: { //mull
             reg[ro0] = reg[ro0] * reg[ro1];
-         break;
-         }
+            break;
+        }
 
-         case 0b00111: { //div
+        case 0b00111: { //div
             if (reg[ro1] == 0) {
                 erroCPU = 1;
                 executando = 0;
-                break;
+             break;
             }
             reg[ro0] = reg[ro0] / reg[ro1];
+            break;
+        }
 
-         }
-
-            case 0b01000: { //cmp
+        case 0b01000: { //cmp
             if (reg[ro1] == reg[ro0]) {
                 e = 1;
             } else {
@@ -264,12 +269,154 @@ void executa(void) {
             }
 
             break;
+        }
+
+        case 0b01001: { //movr
+            reg[ro0] = reg[ro1];
+        break;
+        }
+
+        case 0b01010: { //and
+            reg[ro0] = reg[ro0] & reg[ro1];
+            break;
+        }
+
+        case 0b01011: { //or
+            reg[ro0] = reg[ro0] | reg[ro1];
+        break;
+        }
+
+        case 0b01100: { //xor
+            reg[ro0] = reg[ro0] ^ reg[ro1];
+            break;
+        }
+
+         case 0b01101: { //not rx
+            reg[ro0] = ~reg[ro0];
+         break;
+        }
+
+         case 0b01110: {
+            // je z
+            if (e == 1) {
+                tamanhoInstrucao = 0 ;
+                pc = imm;
+                break;
+            }
+
+            break;
+        }
+
+        case 0b01111: {
+            //jne z
+            if (e == 0) {
+                tamanhoInstrucao = 0;
+                pc = imm;
+                break;
+            }
+
+            break;
+        }
+
+        case 0b10000: { // jl z
+            if (l == 1) {
+                tamanhoInstrucao = 0;
+                pc = imm;
+            }
+        break;
+        }
+
+        case 0b10001: { // jle z
+            if (l == 1 || e == 1) {
+                tamanhoInstrucao = 0;
+                pc = imm;
+            }
+        break;
+        }
+
+        case 0b10010: { // jg z
+            if (g == 1) {
+                tamanhoInstrucao = 0;
+                pc = imm;
+            }
+            break;
+        }
+
+        case 0b10011: { // jge z
+            if (g == 1  || e == 1) {
+                tamanhoInstrucao = 0;
+                pc = imm;
+            }
+        break;
+        }
+
+         case 0b10100: { //jmp
+            tamanhoInstrucao = 0;
+            pc = imm;
+            break;
+        }
+
+         case 0b10101: { //ld
+            unsigned char byteAlto = lerByteMemoria(imm);
+            unsigned char byteBaixo = lerByteMemoria(imm + 1);
+            reg[ro0] = ((unsigned short int) byteAlto << 8) | byteBaixo ;
+            break;
          }
 
+         case 0b10110: { //st
+            escreverByteMemoria(imm,reg[ro0]>>8);
+            escreverByteMemoria(imm+1,reg[ro0] & 0xFF);
+            break;
+        }
 
+         case 0b10111: { //movi
+            reg[ro0] = imm;
+            break;
+         }
+
+         case  0b11000: { // addi
+            reg[ro0] = reg[ro0] + imm;
+            break;
+        }
+
+        case  0b11001 : { //subi
+            reg[ro0] = reg[ro0] - imm;
+            break;
+        }
+
+        case 0b11010: {// muli
+            reg[ro0] = reg[ro0] * imm;
+            break;
+            }
+
+        case 0b11011: { //divi
+            if (imm == 0) {
+                erroCPU = 1;
+                executando = 0;
+                break;
+            }
+            reg[ro0] = reg[ro0] / imm;
+            break;
+        }
+
+        case 0b11100  : { //lsh
+            reg[ro0] = reg[ro0] << imm;
+            break;
+        }
+
+        case 0b11101 : { //rsh
+            reg[ro0] = reg[ro0] >> imm;
+        break;
+        }
+
+        default: {
+            erroCPU = 1;
+            executando = 0;
+            printf("\n erro de isntrucao, cpu = %d ", erroCPU);
+            printf("\n executando = %d ", executando);
+        }
     }
-
-
+}
 
 
 int main(void) {
