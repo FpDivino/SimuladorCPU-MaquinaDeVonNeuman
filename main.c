@@ -10,7 +10,16 @@ unsigned char lerByteMemoria(unsigned short int endereco) {
     return (unsigned char)(mbr & 0xFF);
 }
 
+
+//Vanessa
+void escreverByteMemoria(unsigned short int endereco, unsigned char dado) {
+    mar = endereco & 0x00FF;
+    mbr = dado & 0xFF;
+    memoria[mar] = mbr;
+}
+
 void inicializarCPU(void) {
+    pc = 0;
     int i;
 
     for (i = 0; i < 256; i++) {
@@ -38,6 +47,8 @@ void inicializarCPU(void) {
     erroCPU = 0;
     tamanhoInstrucao = 0;
 }
+
+
 
 void busca(void) {
     unsigned char primeiroByte = 0;
@@ -186,6 +197,80 @@ void carregarTesteManual(void) {
 
     memoria[0x08] = 0x00;
 }
+//Vanessa
+void executa(void) {
+    switch (ir) {
+        case 0b00000: //hlt
+            executando = 0;
+            break;
+
+        case 0b00001://nop
+            break;
+
+        case 0b00010: { //ldr
+            unsigned char byteAlto  = lerByteMemoria(reg[ro1]);
+            unsigned char byteBaixo = lerByteMemoria(reg[ro1] + 1);
+            reg[ro0] = ((unsigned short int)byteAlto << 8) | byteBaixo;
+            break;
+        }
+
+        case 0b00011: // str rX, rY
+            byteAlto = reg[ro0] >> 8;
+            byteBaixo = reg[ro0] & 0xFF;
+            escreverByteMemoria(reg[ro1], byteAlto);
+            escreverByteMemoria(reg[ro1] + 1, byteBaixo);
+
+        case 0b00100: { // add rX, rY
+            reg[ro0] = reg[ro0] + reg[ro1];;
+        }
+
+        case 0b00101: {//sub
+            reg[ro0] = reg[ro0] - reg[ro1];
+            break;
+        }
+
+         case 0b00110: { //mull
+            reg[ro0] = reg[ro0] * reg[ro1];
+         break;
+         }
+
+         case 0b00111: { //div
+            if (reg[ro1] == 0) {
+                erroCPU = 1;
+                executando = 0;
+                break;
+            }
+            reg[ro0] = reg[ro0] / reg[ro1];
+
+         }
+
+            case 0b01000: { //cmp
+            if (reg[ro1] == reg[ro0]) {
+                e = 1;
+            } else {
+                e = 0;
+            }
+
+            if (reg[ro0] < reg[ro1]) {
+                l = 1;
+            } else {
+                l = 0;
+            }
+
+            if (reg[ro0] > reg[ro1]) {
+                g = 1;
+            } else {
+                g = 0;
+            }
+
+            break;
+         }
+
+
+    }
+
+
+
 
 int main(void) {
     inicializarCPU();

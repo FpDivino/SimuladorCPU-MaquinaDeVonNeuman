@@ -20,3 +20,9 @@ unsigned short int reg[8];// r0 ate r7
 int executando = 1;
 int erroCPU = 0;
 int tamanhoInstrucao = 0;
+
+unsigned char byteAlto;
+unsigned char byteBaixo;
+
+
+
