@@ -48,6 +48,160 @@ void inicializarCPU(void) {
     tamanhoInstrucao = 0;
 }
 
+// prototipo pq carregarMemoriaArquivo usa codificarInstrucao antes dela ser definida
+void codificarInstrucao(const char *mnem, unsigned char endereco);
+
+// le o arquivo e carrega na memoria
+// formato: endereco;i ou d;instrucao ou dado
+// ex: 0;i;ld r0, 1e   ou   90;d;20
+void carregarMemoriaArquivo(const char *nomeArquivo) {
+    FILE *arq = fopen(nomeArquivo, "r");
+    if (arq == NULL) {
+        printf("erro: nao abriu o arquivo %s\n", nomeArquivo);
+        return;
+    }
+
+    char linha[128];
+
+    while (fgets(linha, sizeof(linha), arq)) {
+        linha[strcspn(linha, "\n")] = '\0'; // tira o \n
+
+        if (strlen(linha) == 0) continue; // linha vazia
+
+        char *parteEndereco = strtok(linha, ";");
+        char *parteTipo     = strtok(NULL, ";");
+        char *parteConteudo = strtok(NULL, ";");
+
+        if (parteEndereco == NULL || parteTipo == NULL || parteConteudo == NULL)
+            continue;
+
+        unsigned int endereco = (unsigned int)strtol(parteEndereco, NULL, 16);
+
+        // hlt escreve o byte mas continua lendo o arquivo pq pode ter dados depois
+        if (strcmp(parteConteudo, "hlt") == 0) {
+            memoria[endereco & 0xFF] = 0x00;
+            continue;
+        }
+
+        if (parteTipo[0] == 'd') {
+            // dado — dois bytes, big endian
+            unsigned int valor = (unsigned int)strtol(parteConteudo, NULL, 16);
+            memoria[(endereco)     & 0xFF] = (valor >> 8) & 0xFF;
+            memoria[(endereco + 1) & 0xFF] = valor & 0xFF;
+
+        } else if (parteTipo[0] == 'i') {
+            // instrucao — monta os bytes
+            codificarInstrucao(parteConteudo, endereco & 0xFF);
+        }
+    }
+
+    fclose(arq);
+}
+
+// recebe o mnemônico e escreve os bytes na memoria
+// ex: "ld r0, 1e"  ->  A8 00 1E
+void codificarInstrucao(const char *mnem, unsigned char endereco) {
+    char buf[64];
+    strncpy(buf, mnem, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = '\0';
+
+    char *op = strtok(buf, " ,\t"); // pega o opcode
+    if (op == NULL) return;
+
+    // 1 byte
+    if (strcmp(op, "hlt") == 0) {
+        memoria[endereco] = 0x00; // opcode 00000
+        return;
+    }
+    if (strcmp(op, "nop") == 0) {
+        memoria[endereco] = 0x08; // opcode 00001
+        return;
+    }
+
+    // not rX — 1 byte com reg0
+    if (strcmp(op, "not") == 0) {
+        char *sReg0 = strtok(NULL, " ,\t");
+        unsigned char r0 = (sReg0 != NULL) ? (unsigned char)atoi(sReg0 + 1) : 0;
+        memoria[endereco] = (0b01101 << 3) | (r0 & 0x07);
+        return;
+    }
+
+    // Intruções de 2 bytes: op rX, rY
+    struct { const char *nome; unsigned char opcode; } ops2[] = {
+        {"ldr", 0b00010}, {"str", 0b00011},                 // 00010 = ldr    00011 = str
+        {"add", 0b00100}, {"sub", 0b00101},                 // 00100 = add    00101 = sub
+        {"mul", 0b00110}, {"div", 0b00111},                 // 00110 = mul    00111 = div
+        {"cmp", 0b01000}, {"movr",0b01001},                 // 01000 = cmp    01001 = movr
+        {"and", 0b01010}, {"or",  0b01011}, {"xor", 0b01100}, // 01010 = and    01011 = or    01100 = xor
+        {NULL, 0}
+    };
+
+    int i;
+    for (i = 0; ops2[i].nome != NULL; i++) {
+        if (strcmp(op, ops2[i].nome) == 0) {
+            char *sReg0 = strtok(NULL, " ,\t");
+            char *sReg1 = strtok(NULL, " ,\t");
+            unsigned char r0 = (sReg0 != NULL) ? (unsigned char)atoi(sReg0 + 1) : 0;
+            unsigned char r1 = (sReg1 != NULL) ? (unsigned char)atoi(sReg1 + 1) : 0;
+            memoria[endereco]     = (ops2[i].opcode << 3) | (r0 & 0x07);
+            memoria[endereco + 1] = (r1 & 0x07) << 5;
+            return;
+        }
+    }
+
+    /*
+        Instrucoes de 3 bytes:
+        jumps — sem reg0, so endereco
+        ld, st, movi, addi, subi, muli, divi, lsh, rsh — reg0 + endereco ou imediato
+    */
+
+    // jumps: op Z
+    struct { const char *nome; unsigned char opcode; } jumps[] = {
+        {"je",  0b01110}, {"jne", 0b01111},   // 01110 = je     01111 = jne
+        {"jl",  0b10000}, {"jle", 0b10001},   // 10000 = jl     10001 = jle
+        {"jg",  0b10010}, {"jge", 0b10011},   // 10010 = jg     10011 = jge
+        {"jmp", 0b10100},                     // 10100 = jmp
+        {NULL, 0}
+    };
+
+    for (i = 0; jumps[i].nome != NULL; i++) {
+        if (strcmp(op, jumps[i].nome) == 0) {
+            char *sImm = strtok(NULL, " ,\t");
+            unsigned short int imediato = (sImm != NULL) ?
+                (unsigned short int)strtol(sImm, NULL, 16) : 0;
+            memoria[endereco]     = (jumps[i].opcode << 3) & 0xF8;
+            memoria[endereco + 1] = (imediato >> 8) & 0xFF;
+            memoria[endereco + 2] = imediato & 0xFF;
+            return;
+        }
+    }
+
+    // op rX, Z ou op rX, IMM
+    struct { const char *nome; unsigned char opcode; } ops3[] = {
+        {"ld",   0b10101}, {"st",   0b10110},   // 10101 = ld     10110 = st
+        {"movi", 0b10111}, {"addi", 0b11000},   // 10111 = movi   11000 = addi
+        {"subi", 0b11001}, {"muli", 0b11010},   // 11001 = subi   11010 = muli
+        {"divi", 0b11011}, {"lsh",  0b11100},   // 11011 = divi   11100 = lsh
+        {"rsh",  0b11101},                      // 11101 = rsh
+        {NULL, 0}
+    };
+
+    for (i = 0; ops3[i].nome != NULL; i++) {
+        if (strcmp(op, ops3[i].nome) == 0) {
+            char *sReg0 = strtok(NULL, " ,\t");
+            char *sImm  = strtok(NULL, " ,\t");
+            unsigned char r0 = (sReg0 != NULL) ? (unsigned char)atoi(sReg0 + 1) : 0;
+            unsigned short int imediato = (sImm != NULL) ?
+                (unsigned short int)strtol(sImm, NULL, 16) : 0;
+            memoria[endereco]     = (ops3[i].opcode << 3) | (r0 & 0x07);
+            memoria[endereco + 1] = (imediato >> 8) & 0xFF;
+            memoria[endereco + 2] = imediato & 0xFF;
+            return;
+        }
+    }
+
+    printf("instrucao nao reconhecida: %s\n", mnem);
+}
 
 
 void busca(void) {
@@ -71,7 +225,7 @@ void busca(void) {
         tamanhoInstrucao = 2;                                 // 00010 = ldr                00111 = div
                                                               // 00011 = str                01000 = cmp
         segundoByte = lerByteMemoria(pc + 1);                 // 00100 = add                01001 = movr
-                                                              // 00101 = sub                01010 = or
+                                                              // 00101 = sub                01010 = and
         mbr = ((unsigned int)primeiroByte << 8) |             // 00110 = mul                01100 = xor
               ((unsigned int)segundoByte);
     }
@@ -171,32 +325,37 @@ void decodifica(void) {
         executando = 0;
     }
 }
-void exibirEstadoBuscaDecodifica(void) {
-    printf("\nCPU apos busca e decodificacao:\n");
-    printf("PC : 0x%04X\n", pc);
-    printf("MAR: 0x%04X\n", mar);
-    printf("MBR: 0x%08X\n", mbr);
-    printf("IR : 0x%02X\n", ir);
-    printf("RO0: 0x%X\n", ro0);
-    printf("RO1: 0x%X\n", ro1);
-    printf("IMM: 0x%04X\n", imm);
-    printf("Tamanho da instrucao: %d byte(s)\n", tamanhoInstrucao);
+
+// mostra registradores e memoria no formato pedido
+void exibirEstado(void) {
+    int i, j;
+
+    printf("\nCPU:\n");
+    printf("R0: %04X  R1: %04X  R2: %04X  R3: %04X\n",
+           reg[0], reg[1], reg[2], reg[3]);
+    printf("R4: %04X  R5: %04X  R6: %04X  R7: %04X\n",
+           reg[4], reg[5], reg[6], reg[7]);
+    printf("MBR: %08X  MAR: %04X  IMM: %04X  PC: %04X\n",
+           mbr, mar, imm, pc);
+    printf("IR: %02X  RO0: %X  RO1: %X\n", ir, ro0, ro1);
+    printf("E: %X  L: %X  G: %X\n", e, l, g);
+
+    printf("\nMemoria:\n");
+    printf("    ");
+    for (i = 0; i < 16; i++) {
+        printf("%02X ", i);
+    }
+    printf("\n");
+
+    for (i = 0; i < 16; i++) {
+        printf("%02X  ", i * 16);
+        for (j = 0; j < 16; j++) {
+            printf("%02X ", memoria[i * 16 + j]);
+        }
+        printf("\n");
+    }
 }
 
-void carregarTesteManual(void) {
-    memoria[0x00] = 0xA8;
-    memoria[0x01] = 0x00;
-    memoria[0x02] = 0x1E;
-
-    memoria[0x03] = 0xA9;
-    memoria[0x04] = 0x00;
-    memoria[0x05] = 0x20;
-
-    memoria[0x06] = 0x20;
-    memoria[0x07] = 0x20;
-
-    memoria[0x08] = 0x00;
-}
 //Vanessa
 void executa(void) {
     unsigned char byteAlto;
@@ -300,7 +459,7 @@ void executa(void) {
             // je z
             if (e == 1) {
                 tamanhoInstrucao = 0 ;
-                pc = imm;
+                pc = imm & 0x00FF;
                 break;
             }
 
@@ -311,7 +470,7 @@ void executa(void) {
             //jne z
             if (e == 0) {
                 tamanhoInstrucao = 0;
-                pc = imm;
+                pc = imm & 0x00FF;
                 break;
             }
 
@@ -321,7 +480,7 @@ void executa(void) {
         case 0b10000: { // jl z
             if (l == 1) {
                 tamanhoInstrucao = 0;
-                pc = imm;
+                pc = imm & 0x00FF;
             }
         break;
         }
@@ -329,7 +488,7 @@ void executa(void) {
         case 0b10001: { // jle z
             if (l == 1 || e == 1) {
                 tamanhoInstrucao = 0;
-                pc = imm;
+                pc = imm & 0x00FF;
             }
         break;
         }
@@ -337,7 +496,7 @@ void executa(void) {
         case 0b10010: { // jg z
             if (g == 1) {
                 tamanhoInstrucao = 0;
-                pc = imm;
+                pc = imm & 0x00FF;
             }
             break;
         }
@@ -345,14 +504,14 @@ void executa(void) {
         case 0b10011: { // jge z
             if (g == 1  || e == 1) {
                 tamanhoInstrucao = 0;
-                pc = imm;
+                pc = imm & 0x00FF;
             }
         break;
         }
 
          case 0b10100: { //jmp
             tamanhoInstrucao = 0;
-            pc = imm;
+            pc = imm & 0x00FF;
             break;
         }
 
@@ -419,9 +578,15 @@ void executa(void) {
 }
 
 
-int main(void) {
+int main(int argc, char *argv[]) {
     inicializarCPU();
-    carregarTesteManual();
+
+    if (argc < 2) {
+        printf("uso: %s <arquivo.txt>\n", argv[0]);
+        return 1;
+    }
+
+    carregarMemoriaArquivo(argv[1]);
 
     printf("--- TESTE DE BUSCA E DECODIFICACAO ---\n");
 
@@ -437,13 +602,16 @@ int main(void) {
         if (erroCPU == 1) {
             break;
         }
-        exibirEstadoBuscaDecodifica();
 
-        if (ir == 0b00000) {
-            executando = 0;
-        } else {
-            pc = (pc + tamanhoInstrucao) & 0x00FF;
-        }
+        executa();
+
+        // atualiza o pc so se nao foi um desvio (jumps zeram tamanhoInstrucao)
+        pc = (pc + tamanhoInstrucao) & 0x00FF;
+
+        exibirEstado();
+
+        if (!executando) break;
+
         printf("\nPressione Enter para continuar...\n");
         getchar();
     }
