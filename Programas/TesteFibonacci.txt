@@ -1,0 +1,24 @@
+0;i;ld r0, fc
+3;i;movi r5, 0
+6;i;cmp r0, r5
+8;i;je 2f
+b;i;movi r5, 1
+e;i;cmp r0, r5
+10;i;je 35
+13;i;movi r2, 0
+16;i;movi r3, 1
+19;i;movi r1, 2
+1c;i;movr r4, r2
+1e;i;add r4, r3
+20;i;movr r2, r3
+22;i;movr r3, r4
+24;i;cmp r1, r0
+26;i;je 38
+29;i;addi r1, 1
+2c;i;jmp 1c
+2f;i;movi r4, 0
+32;i;jmp 38
+35;i;movi r4, 1
+38;i;st r4, fe
+3b;i;hlt
+fc;d;a
