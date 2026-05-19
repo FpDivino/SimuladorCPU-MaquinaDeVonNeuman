@@ -373,7 +373,7 @@ void executa(void) {
         case 0b11100: { //lsh
 
                 reg[ro0] = reg[ro0] << imm;
-          
+
             break;
         }
 
@@ -503,7 +503,11 @@ int carregarArquivoMemoria(const char *arquivoDeInstrucao) {
                 return 0;
             }
 
-            if (opcode == 0b00000 || opcode == 0b00001) {
+            if (opcode == 0b00000) {
+                escreverByteMemoria(endereco, opcode << 3);
+                break;
+            }
+            else if (opcode == 0b00001) {
                 escreverByteMemoria(endereco, opcode << 3);
             }
             else if (opcode == 0b01101) {
@@ -541,10 +545,15 @@ int carregarArquivoMemoria(const char *arquivoDeInstrucao) {
     return 1;
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
     inicializarCPU();
 
-    if (carregarArquivoMemoria("Programas/ProgramaExemplo.txt") == 0) {
+    if (argc < 2) {
+        printf("uso: %s <arquivo.txt>\n", argv[0]);
+        return 1;
+    }
+
+    if (carregarArquivoMemoria(argv[1]) == 0) {
         return 1;
     }
 

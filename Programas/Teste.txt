@@ -20,5 +20,5 @@ e;i;cmp r0, r5
 32;i;jmp 38
 35;i;movi r4, 1
 38;i;st r4, fe
-fc;d;a
+fc;d;0
 3b;i;hlt
