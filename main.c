@@ -164,7 +164,7 @@ void decodifica(void) {
     printf("RO0: 0x%X\n", ro0);
     printf("RO1: 0x%X\n", ro1);
     printf("IMM: 0x%04X\n", imm);
-    printf("Tamanho da instrucao: %d byte\n", tamanhoInstrucao);
+    printf("Tamanho da instrucao: %d byte(s)\n", tamanhoInstrucao);
 }
 */
 
@@ -263,7 +263,7 @@ void executa(void) {
         }
 
         case 0b01101: { //not rx
-            reg[ro0] = !reg[ro0];
+            reg[ro0] = ~reg[ro0];
             break;
         }
 
