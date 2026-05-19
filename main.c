@@ -10,7 +10,6 @@ unsigned char lerByteMemoria(unsigned short int endereco) {
     return (unsigned char)(mbr & 0xFF);
 }
 
-
 //Vanessa
 void escreverByteMemoria(unsigned short int endereco, unsigned char dado) {
     mar = endereco & 0x00FF;
@@ -47,8 +46,6 @@ void inicializarCPU(void) {
     erroCPU = 0;
     tamanhoInstrucao = 0;
 }
-
-
 
 void busca(void) {
     unsigned char primeiroByte = 0;
@@ -171,7 +168,8 @@ void decodifica(void) {
         executando = 0;
     }
 }
-void exibirEstadoBuscaDecodifica(void) {
+
+/*void exibirEstadoBuscaDecodifica(void) {
     printf("\nCPU apos busca e decodificacao:\n");
     printf("PC : 0x%04X\n", pc);
     printf("MAR: 0x%04X\n", mar);
@@ -182,21 +180,8 @@ void exibirEstadoBuscaDecodifica(void) {
     printf("IMM: 0x%04X\n", imm);
     printf("Tamanho da instrucao: %d byte(s)\n", tamanhoInstrucao);
 }
+*/
 
-void carregarTesteManual(void) {
-    memoria[0x00] = 0xA8;
-    memoria[0x01] = 0x00;
-    memoria[0x02] = 0x1E;
-
-    memoria[0x03] = 0xA9;
-    memoria[0x04] = 0x00;
-    memoria[0x05] = 0x20;
-
-    memoria[0x06] = 0x20;
-    memoria[0x07] = 0x20;
-
-    memoria[0x08] = 0x00;
-}
 //Vanessa
 void executa(void) {
     unsigned char byteAlto;
@@ -243,7 +228,7 @@ void executa(void) {
             if (reg[ro1] == 0) {
                 erroCPU = 1;
                 executando = 0;
-             break;
+                break;
             }
             reg[ro0] = reg[ro0] / reg[ro1];
             break;
@@ -273,7 +258,7 @@ void executa(void) {
 
         case 0b01001: { //movr
             reg[ro0] = reg[ro1];
-        break;
+            break;
         }
 
         case 0b01010: { //and
@@ -283,7 +268,7 @@ void executa(void) {
 
         case 0b01011: { //or
             reg[ro0] = reg[ro0] | reg[ro1];
-        break;
+            break;
         }
 
         case 0b01100: { //xor
@@ -291,16 +276,16 @@ void executa(void) {
             break;
         }
 
-         case 0b01101: { //not rx
-            reg[ro0] = ~reg[ro0];
-         break;
+        case 0b01101: { //not rx
+            reg[ro0] = !reg[ro0];
+            break;
         }
 
-         case 0b01110: {
+        case 0b01110: {
             // je z
             if (e == 1) {
-                tamanhoInstrucao = 0 ;
-                pc = imm;
+                tamanhoInstrucao = 0;
+                pc = imm & 0x00FF;
                 break;
             }
 
@@ -311,7 +296,7 @@ void executa(void) {
             //jne z
             if (e == 0) {
                 tamanhoInstrucao = 0;
-                pc = imm;
+                pc = imm & 0x00FF;
                 break;
             }
 
@@ -321,65 +306,65 @@ void executa(void) {
         case 0b10000: { // jl z
             if (l == 1) {
                 tamanhoInstrucao = 0;
-                pc = imm;
+                pc = imm & 0x00FF;
             }
-        break;
+            break;
         }
 
         case 0b10001: { // jle z
             if (l == 1 || e == 1) {
                 tamanhoInstrucao = 0;
-                pc = imm;
+                pc = imm & 0x00FF;
             }
-        break;
+            break;
         }
 
         case 0b10010: { // jg z
             if (g == 1) {
                 tamanhoInstrucao = 0;
-                pc = imm;
+                pc = imm & 0x00FF;
             }
             break;
         }
 
         case 0b10011: { // jge z
-            if (g == 1  || e == 1) {
+            if (g == 1 || e == 1) {
                 tamanhoInstrucao = 0;
-                pc = imm;
+                pc = imm & 0x00FF;
             }
-        break;
-        }
-
-         case 0b10100: { //jmp
-            tamanhoInstrucao = 0;
-            pc = imm;
             break;
         }
 
-         case 0b10101: { //ld
+        case 0b10100: { //jmp
+            tamanhoInstrucao = 0;
+            pc = imm & 0x00FF;
+            break;
+        }
+
+        case 0b10101: { //ld
             unsigned char byteAlto = lerByteMemoria(imm);
             unsigned char byteBaixo = lerByteMemoria(imm + 1);
-            reg[ro0] = ((unsigned short int) byteAlto << 8) | byteBaixo ;
+            reg[ro0] = ((unsigned short int)byteAlto << 8) | byteBaixo;
             break;
-         }
+        }
 
-         case 0b10110: { //st
-            escreverByteMemoria(imm,reg[ro0]>>8);
+        case 0b10110: { //st
+            escreverByteMemoria(imm,reg[ro0] >> 8);
             escreverByteMemoria(imm+1,reg[ro0] & 0xFF);
             break;
         }
 
-         case 0b10111: { //movi
+        case 0b10111: { //movi
             reg[ro0] = imm;
             break;
-         }
+        }
 
-         case  0b11000: { // addi
+        case 0b11000: { // addi
             reg[ro0] = reg[ro0] + imm;
             break;
         }
 
-        case  0b11001 : { //subi
+        case 0b11001: { //subi
             reg[ro0] = reg[ro0] - imm;
             break;
         }
@@ -387,7 +372,7 @@ void executa(void) {
         case 0b11010: {// muli
             reg[ro0] = reg[ro0] * imm;
             break;
-            }
+        }
 
         case 0b11011: { //divi
             if (imm == 0) {
@@ -399,14 +384,17 @@ void executa(void) {
             break;
         }
 
-        case 0b11100  : { //lsh
-            reg[ro0] = reg[ro0] << imm;
+        case 0b11100: { //lsh
+
+                reg[ro0] = reg[ro0] << imm;
+          
             break;
         }
 
-        case 0b11101 : { //rsh
-            reg[ro0] = reg[ro0] >> imm;
-        break;
+        case 0b11101: { //rsh
+
+                reg[ro0] = reg[ro0] >> imm;
+            break;
         }
 
         default: {
@@ -418,12 +406,37 @@ void executa(void) {
     }
 }
 
+void EstadoCPU(void) {
+    printf("\nCPU:\n");
+    printf("R0: %04X R1: %04X R2: %04X R3: %04X\n",
+           reg[0], reg[1], reg[2], reg[3]);
+    printf("R4: %04X R5: %04X R6: %04X R7: %04X\n",
+           reg[4], reg[5], reg[6], reg[7]);
+
+    printf("MBR: %08X MAR: %04X IMM: %04X PC: %04X\n",
+           mbr, mar, imm, pc);
+
+    printf("IR: %02X RO0: %X RO1: %X\n", ir, ro0, ro1);
+    printf("E: %X L: %X G: %X\n", e, l, g);
+
+    printf("\nMemoria:\n");
+    printf("   00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n");
+
+    for (int linha = 0; linha < 16; linha++) {
+        printf("%02X ", linha * 16);
+
+        for (int coluna = 0; coluna < 16; coluna++) {
+            printf("%02X ", memoria[linha * 16 + coluna]);
+        }
+
+        printf("\n");
+    }
+}
 
 int main(void) {
     inicializarCPU();
-    carregarTesteManual();
 
-    printf("--- TESTE DE BUSCA E DECODIFICACAO ---\n");
+    printf("--- TESTE DA CPU ---\n");
 
     while (executando == 1) {
         busca();
@@ -437,16 +450,26 @@ int main(void) {
         if (erroCPU == 1) {
             break;
         }
-        exibirEstadoBuscaDecodifica();
 
-        if (ir == 0b00000) {
-            executando = 0;
-        } else {
+        executa();
+
+        if (erroCPU == 1) {
+            break;
+        }
+
+        if (executando == 1) {
             pc = (pc + tamanhoInstrucao) & 0x00FF;
         }
-        printf("\nPressione Enter para continuar...\n");
-        getchar();
+
+        //exibirEstadoBuscaDecodifica();
+        EstadoCPU();
+
+        if (executando == 1) {
+            printf("\nPressione Enter para continuar...\n");
+            getchar();
+        }
     }
-    printf("\n--- FIM DO TESTE ---\n");
+
+    printf("\n--- FIM DO PROGRAMA ---\n");
     return 0;
 }
