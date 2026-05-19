@@ -433,8 +433,151 @@ void EstadoCPU(void) {
     }
 }
 
+int instrucaoParaOpcode(char instrucao[]) {
+    if (strcmp(instrucao, "hlt") == 0) return 0b00000;
+    if (strcmp(instrucao, "nop") == 0) return 0b00001;
+    if (strcmp(instrucao, "ldr") == 0) return 0b00010;
+    if (strcmp(instrucao, "str") == 0) return 0b00011;
+    if (strcmp(instrucao, "add") == 0) return 0b00100;
+    if (strcmp(instrucao, "sub") == 0) return 0b00101;
+    if (strcmp(instrucao, "mul") == 0) return 0b00110;
+    if (strcmp(instrucao, "div") == 0) return 0b00111;
+    if (strcmp(instrucao, "cmp") == 0) return 0b01000;
+    if (strcmp(instrucao, "movr") == 0) return 0b01001;
+    if (strcmp(instrucao, "and") == 0) return 0b01010;
+    if (strcmp(instrucao, "or") == 0) return 0b01011;
+    if (strcmp(instrucao, "xor") == 0) return 0b01100;
+    if (strcmp(instrucao, "not") == 0) return 0b01101;
+    if (strcmp(instrucao, "je") == 0) return 0b01110;
+    if (strcmp(instrucao, "jne") == 0) return 0b01111;
+    if (strcmp(instrucao, "jl") == 0) return 0b10000;
+    if (strcmp(instrucao, "jle") == 0) return 0b10001;
+    if (strcmp(instrucao, "jg") == 0) return 0b10010;
+    if (strcmp(instrucao, "jge") == 0) return 0b10011;
+    if (strcmp(instrucao, "jmp") == 0) return 0b10100;
+    if (strcmp(instrucao, "ld") == 0) return 0b10101;
+    if (strcmp(instrucao, "st") == 0) return 0b10110;
+    if (strcmp(instrucao, "movi") == 0) return 0b10111;
+    if (strcmp(instrucao, "addi") == 0) return 0b11000;
+    if (strcmp(instrucao, "subi") == 0) return 0b11001;
+    if (strcmp(instrucao, "muli") == 0) return 0b11010;
+    if (strcmp(instrucao, "divi") == 0) return 0b11011;
+    if (strcmp(instrucao, "lsh") == 0) return 0b11100;
+    if (strcmp(instrucao, "rsh") == 0) return 0b11101;
+
+    return -1;
+}
+
+int carregarArquivoMemoria(const char *arquivoDeInstrucao) {
+    FILE *arquivo = fopen(arquivoDeInstrucao, "r");
+
+    if (arquivo == NULL) {
+        printf("\nERRO: nao foi possivel abrir o arquivo %s\n", arquivoDeInstrucao);
+        return 0;
+    }
+
+    char linha[256];
+
+    while (fgets(linha, sizeof(linha), arquivo) != NULL) {
+        unsigned int endereco = 0;
+        unsigned int valor = 0;
+        unsigned int r0 = 0;
+        unsigned int r1 = 0;
+        int opcode = -1;
+
+        char tipo;
+        char conteudo[256];
+        char instrucao[20];
+        char parametros[200];
+
+        conteudo[0] = '\0';
+        instrucao[0] = '\0';
+        parametros[0] = '\0';
+
+        linha[strcspn(linha, "\r\n")] = 0;
+
+        if (linha[0] == '\0') {
+            continue;
+        }
+
+        if (sscanf(linha, "%x;%c;%255[^\n]", &endereco, &tipo, conteudo) != 3) {
+            printf("\nERRO: linha invalida: %s\n", linha);
+            fclose(arquivo);
+            return 0;
+        }
+
+        if (tipo == 'd') {
+            sscanf(conteudo, "%x", &valor);
+
+            escreverByteMemoria(endereco, (valor >> 8) & 0xFF);
+            escreverByteMemoria(endereco + 1, valor & 0xFF);
+        }
+
+        else if (tipo == 'i') {
+            sscanf(conteudo, "%19s %199[^\n]", instrucao, parametros);
+
+            opcode = instrucaoParaOpcode(instrucao);
+
+            if (opcode == -1) {
+                printf("\nERRO: instrucao desconhecida: %s\n", instrucao);
+                fclose(arquivo);
+                return 0;
+            }
+
+            if (opcode == 0b00000 || opcode == 0b00001) {
+                escreverByteMemoria(endereco, opcode << 3);
+            }
+
+            else if (opcode == 0b01101) {
+                sscanf(parametros, "r%u", &r0);
+
+                escreverByteMemoria(endereco, (opcode << 3) | (r0 & 0b00000111));
+            }
+
+            else if (opcode >= 0b00010 && opcode <= 0b01100) {
+                sscanf(parametros, "r%u, r%u", &r0, &r1);
+
+                escreverByteMemoria(endereco, (opcode << 3) | (r0 & 0b00000111));
+                escreverByteMemoria(endereco + 1, (r1 & 0b00000111) << 5);
+            }
+
+            else if (opcode >= 0b01110 && opcode <= 0b10100) {
+                sscanf(parametros, "%x", &valor);
+
+                escreverByteMemoria(endereco, opcode << 3);
+                escreverByteMemoria(endereco + 1, (valor >> 8) & 0xFF);
+                escreverByteMemoria(endereco + 2, valor & 0xFF);
+            }
+
+            else if (opcode >= 0b10101 && opcode <= 0b11101) {
+                sscanf(parametros, "r%u, %x", &r0, &valor);
+
+                escreverByteMemoria(endereco, (opcode << 3) | (r0 & 0b00000111));
+                escreverByteMemoria(endereco + 1, (valor >> 8) & 0xFF);
+                escreverByteMemoria(endereco + 2, valor & 0xFF);
+            }
+        }
+
+        else {
+            printf("\nERRO: tipo invalido na linha: %s\n", linha);
+            fclose(arquivo);
+            return 0;
+        }
+    }
+
+    fclose(arquivo);
+
+    pc = 0x0000;
+
+    return 1;
+}
+
 int main(void) {
     inicializarCPU();
+
+    if (carregarArquivoMemoria("Programas/ProgramaExemplo.txt") == 0) {
+        return 1;
+    }
 
     printf("--- TESTE DA CPU ---\n");
 
