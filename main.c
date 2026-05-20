@@ -503,11 +503,7 @@ int carregarArquivoMemoria(const char *arquivoDeInstrucao) {
                 return 0;
             }
 
-            if (opcode == 0b00000) {
-                escreverByteMemoria(endereco, opcode << 3);
-                break;
-            }
-            else if (opcode == 0b00001) {
+            if (opcode == 0b00000 || opcode == 0b00001) {
                 escreverByteMemoria(endereco, opcode << 3);
             }
             else if (opcode == 0b01101) {

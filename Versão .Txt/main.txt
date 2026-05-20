@@ -6,7 +6,6 @@
 unsigned char lerByteMemoria(unsigned short int endereco) {
     mar = endereco & 0x00FF;
     mbr = memoria[mar] & 0xFF;
-
     return (unsigned char)(mbr & 0xFF);
 }
 
@@ -33,15 +32,12 @@ void inicializarCPU(void) {
     mar = 0xFFFF;
     pc = 0x0000;
     imm = 0xFFFF;
-
     ir = 0xFF;
     ro0 = 0xFF;
     ro1 = 0xFF;
-
     e = 0xFF;
     l = 0xFF;
     g = 0xFF;
-
     executando = 1;
     erroCPU = 0;
     tamanhoInstrucao = 0;
@@ -53,7 +49,6 @@ void busca(void) {
     unsigned char terceiroByte = 0;
 
     mbr = 0;
-
     primeiroByte = lerByteMemoria(pc);
 
     ir = primeiroByte >> 3;    // O opcode esta nos bits 7..3 do primeiro byte. O primeiroByte tem 8 bits, deslocar 3 bits para a direita
@@ -63,7 +58,6 @@ void busca(void) {
         tamanhoInstrucao = 1;                                 // 00000 = halt
         mbr = primeiroByte;                                   // 00001 = nop
     }                                                         // 01101 = not
-
     else if (ir >= 0b00010 && ir <= 0b01100) {                // Intruções de 2 bytes
         tamanhoInstrucao = 2;                                 // 00010 = ldr                00111 = div
                                                               // 00011 = str                01000 = cmp
@@ -88,7 +82,6 @@ void busca(void) {
               ((unsigned int)segundoByte << 8)  |             // 10100 = jmp               11100 = lsh
               ((unsigned int)terceiroByte);                   // 10101 = ld                11101 = rsh
     }
-
     else {
         printf("\nERRO: opcode invalido encontrado em PC = 0x%04X\n", pc);
         printf("Byte encontrado: 0x%02X\n", primeiroByte);
@@ -135,32 +128,25 @@ void decodifica(void) {
 
     if (tamanhoInstrucao == 1) {
         primeiroByte = mbr & 0xFF;
-
         ir = primeiroByte >> 3;
         ro0 = primeiroByte & 0b00000111;
     }
-
     else if (tamanhoInstrucao == 2) {
         primeiroByte = (mbr >> 8) & 0xFF;
         segundoByte = mbr & 0xFF;
-
         ir = primeiroByte >> 3;
         ro0 = primeiroByte & 0b00000111;
         ro1 = (segundoByte >> 5) & 0b00000111;
     }
-
     else if (tamanhoInstrucao == 3) {
         primeiroByte = (mbr >> 16) & 0xFF;
         segundoByte = (mbr >> 8) & 0xFF;
         terceiroByte = mbr & 0xFF;
-
         ir = primeiroByte >> 3;
         ro0 = primeiroByte & 0b00000111;
-
         imm = ((unsigned short int)segundoByte << 8) |
               ((unsigned short int)terceiroByte);
     }
-
     else {
         printf("\nERRO: tamanho de instrucao invalido: %d\n", tamanhoInstrucao);
 
@@ -277,7 +263,7 @@ void executa(void) {
         }
 
         case 0b01101: { //not rx
-            reg[ro0] = !reg[ro0];
+            reg[ro0] = ~reg[ro0];
             break;
         }
 
@@ -412,10 +398,8 @@ void EstadoCPU(void) {
            reg[0], reg[1], reg[2], reg[3]);
     printf("R4: %04X R5: %04X R6: %04X R7: %04X\n",
            reg[4], reg[5], reg[6], reg[7]);
-
     printf("MBR: %08X MAR: %04X IMM: %04X PC: %04X\n",
            mbr, mar, imm, pc);
-
     printf("IR: %02X RO0: %X RO1: %X\n", ir, ro0, ro1);
     printf("E: %X L: %X G: %X\n", e, l, g);
 
@@ -484,7 +468,6 @@ int carregarArquivoMemoria(const char *arquivoDeInstrucao) {
         unsigned int r0 = 0;
         unsigned int r1 = 0;
         int opcode = -1;
-
         char tipo;
         char conteudo[256];
         char instrucao[20];
@@ -493,7 +476,6 @@ int carregarArquivoMemoria(const char *arquivoDeInstrucao) {
         conteudo[0] = '\0';
         instrucao[0] = '\0';
         parametros[0] = '\0';
-
         linha[strcspn(linha, "\r\n")] = 0;
 
         if (linha[0] == '\0') {
@@ -508,14 +490,11 @@ int carregarArquivoMemoria(const char *arquivoDeInstrucao) {
 
         if (tipo == 'd') {
             sscanf(conteudo, "%x", &valor);
-
             escreverByteMemoria(endereco, (valor >> 8) & 0xFF);
             escreverByteMemoria(endereco + 1, valor & 0xFF);
         }
-
         else if (tipo == 'i') {
             sscanf(conteudo, "%19s %199[^\n]", instrucao, parametros);
-
             opcode = instrucaoParaOpcode(instrucao);
 
             if (opcode == -1) {
@@ -524,40 +503,35 @@ int carregarArquivoMemoria(const char *arquivoDeInstrucao) {
                 return 0;
             }
 
-            if (opcode == 0b00000 || opcode == 0b00001) {
+            if (opcode == 0b00000) {
+                escreverByteMemoria(endereco, opcode << 3);
+                break;
+            }
+            else if (opcode == 0b00001) {
                 escreverByteMemoria(endereco, opcode << 3);
             }
-
             else if (opcode == 0b01101) {
                 sscanf(parametros, "r%u", &r0);
-
                 escreverByteMemoria(endereco, (opcode << 3) | (r0 & 0b00000111));
             }
-
             else if (opcode >= 0b00010 && opcode <= 0b01100) {
                 sscanf(parametros, "r%u, r%u", &r0, &r1);
-
                 escreverByteMemoria(endereco, (opcode << 3) | (r0 & 0b00000111));
                 escreverByteMemoria(endereco + 1, (r1 & 0b00000111) << 5);
             }
-
             else if (opcode >= 0b01110 && opcode <= 0b10100) {
                 sscanf(parametros, "%x", &valor);
-
                 escreverByteMemoria(endereco, opcode << 3);
                 escreverByteMemoria(endereco + 1, (valor >> 8) & 0xFF);
                 escreverByteMemoria(endereco + 2, valor & 0xFF);
             }
-
             else if (opcode >= 0b10101 && opcode <= 0b11101) {
                 sscanf(parametros, "r%u, %x", &r0, &valor);
-
                 escreverByteMemoria(endereco, (opcode << 3) | (r0 & 0b00000111));
                 escreverByteMemoria(endereco + 1, (valor >> 8) & 0xFF);
                 escreverByteMemoria(endereco + 2, valor & 0xFF);
             }
         }
-
         else {
             printf("\nERRO: tipo invalido na linha: %s\n", linha);
             fclose(arquivo);
@@ -566,16 +540,20 @@ int carregarArquivoMemoria(const char *arquivoDeInstrucao) {
     }
 
     fclose(arquivo);
-
     pc = 0x0000;
 
     return 1;
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
     inicializarCPU();
 
-    if (carregarArquivoMemoria("Programas/ProgramaExemplo.txt") == 0) {
+    if (argc < 2) {
+        printf("uso: %s <arquivo.txt>\n", argv[0]);
+        return 1;
+    }
+
+    if (carregarArquivoMemoria(argv[1]) == 0) {
         return 1;
     }
 
