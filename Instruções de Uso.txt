@@ -229,11 +229,8 @@ Essa linha grava o valor 0x000A nos endereços 0xFC e 0xFD, como 0x000A equivale
 Para calcular outro valor, basta trocar o dado hexadecimal.
 
 Exemplos:
-  "fc;d;0   calcula Fibonacci(0)
-   fc;d;1   calcula Fibonacci(1)
-   fc;d;2   calcula Fibonacci(2)
-   fc;d;5   calcula Fibonacci(5)
-   fc;d;a   calcula Fibonacci(10)"
-
-O resultado será armazenado nos endereços 0xFE e 0xFF.
-
+  "fc;d;0   calcula 0
+   fc;d;1   calcula 1
+   fc;d;2   calcula 2
+   fc;d;5   calcula 5
+   fc;d;a   calcula 10"
